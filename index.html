@@ -9,7 +9,618 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
-<body>
-  TESTE TESTE
+<body style="margin: 0; padding: 0; background: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+    <div id="root"></div>
+    <script type="text/babel">
+/**
+ * =================================================================================
+ * POST DESIGNER v8.1.2 - CONFIGURAÇÕES GLOBAIS
+ * =================================================================================
+ */
+
+const APP_VERSION = "8.1.2";
+const STORAGE_KEY = "post_designer_v8_data";
+
+const FORMATS = {
+  story: {
+    label: 'Story (9:16)',
+    dims: { width: 1080, height: 1920 },
+    aspectRatio: '9/16',
+    logoBaseWidth: 650,
+    titleSizeClass: 'text-[8.5rem]', 
+    logoTextSizeClass: 'text-[9rem]',
+    logoIconSizeClass: 'text-[10rem]',
+    titleGap: 'gap-y-6', 
+    padding: 'pt-32 pb-28 px-10',
+    defaultPillY: -17,
+    baseSizes: {
+      preTitle: 34,
+      mainTitle: 135,
+      subtitle: 48,
+      infoLabel: 20,
+      infoValue: 64,
+      footerTitle: 38,
+      footerAddr: 46
+    }
+  },
+  post: {
+    label: 'Post (4:5)',
+    dims: { width: 1080, height: 1350 },
+    aspectRatio: '4/5',
+    logoBaseWidth: 480,
+    titleSizeClass: 'text-[7rem]',
+    logoTextSizeClass: 'text-8xl',
+    logoIconSizeClass: 'text-9xl',
+    titleGap: 'gap-y-5', 
+    padding: 'pt-28 pb-20 px-12',
+    defaultPillY: -4, 
+    baseSizes: {
+      preTitle: 24,
+      mainTitle: 110,
+      subtitle: 36, 
+      infoLabel: 16,
+      infoValue: 42,
+      footerTitle: 28,
+      footerAddr: 36
+    }
+  }
+};
+
+const INITIAL_THEME = {
+  accent: '#fbbf24', 
+  bg: '#0e162b',     
+  text: '#ffffff'
+};
+
+const INITIAL_TEXTS = {
+  preTitle: 'ESTUDO DA PALAVRA',
+  mainTitle: 'ESCOLA\nBÍBLICA',
+  subtitle: '"Venha crescer na graça e no conhecimento."',
+  day: 'Toda Terça',
+  time: '19h',
+  footerTitle: 'IGREJA EVANGÉLICA ARCA', 
+  address1: 'Est. dos Bandeirantes, 11.609 / Qd-04 Lt-54',
+  address2: 'Vargem Pequena'
+};
+
+const INITIAL_VERSES_LIST = [
+  "Tua Palavra é lâmpada que ilumina os meus passos e luz que clareia o meu caminho! (Sl 119:105)",
+  "Toda Escritura é dada pela inspiração de Deus... (2Tm 3:16)",
+  "Estes foram mais nobres do que os de Tessalônica... (At 17:11)",
+  "Porque o SENHOR dá a sabedoria... (Pv 2:6)",
+  "Este livro da lei não se apartará de tua boca... (Js 1:8)",
+  "Quanto amo a tua Lei! Sobre ela reflito o dia inteira! (Sl 119:97)",
+  "A exposição das tuas palavras ilumina e dá entendimento aos inexperientes! (Sl 119:130)"
+];
+
+const FALLBACK_VERSES = [
+    "O Senhor é o meu pastor; de nada terei falta. (Salmos 23:1)",
+    "Tudo posso naquele que me fortalece. (Filipenses 4:13)",
+    "Mas os que esperam no Senhor renovarão as forças. (Isaías 40:31)",
+    "Busquem, pois, em primeiro lugar o Reino de Deus. (Mateus 6:33)",
+    "Confie no Senhor de todo o seu coração. (Provérbios 3:5)"
+];
+
+const INITIAL_SCALES = {
+  logo: 100, logoX: 0, logoY: 0,
+  preTitle: 100, preTitleX: 0, preTitleY: 0,
+  mainTitle: 100, mainTitleX: 0, mainTitleY: 0,
+  subtitle: 100, 
+  subtitleX: 0,
+  subtitleY: 0,
+  subtitleWidth: 90,
+  info: 100, infoTextSize: 100,
+  footer: 100, 
+  footerX: 0, 
+  footerY: 0,
+  footerWidth: 100,
+  shadowBlur: 20,
+  pillPadding: 36,
+  pillTitleTop: 28,
+  pillIconY: 0,
+  pillX: 0, 
+  pillY: -17, 
+  pillTextX: 0,
+  pillTextY: -17 
+};
+
+const INITIAL_BG = { opacity: 50, scale: 100, x: 0, y: 0 };
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-900 text-white rounded-lg">
+          <h2 className="font-bold mb-2">Ops! Algo deu errado.</h2>
+          <p className="text-xs font-mono">{this.state.error?.toString()}</p>
+          <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-white text-red-900 rounded font-bold">
+            Recarregar Página
+          </button>
+        </div>
+      );
+    }
+    return this.props.children; 
+  }
+}
+
+/**
+ * =================================================================================
+ * COMPONENTE: DRAGGABLE ITEM
+ * =================================================================================
+ */
+const DraggableItem = ({ children, x, y, scaleVal, onMove, onScale, onEdit, id, className = "", disabled = false, fitContent = true }) => {
+  const [isHovered, setIsHovered] = React.useState(false);
+  const isDragging = React.useRef(false);
+  const isResizing = React.useRef(false);
+  const startPos = React.useRef({ x: 0, y: 0 });
+  const startValues = React.useRef({ x: 0, y: 0, scale: 100 });
+
+  const handleMouseDownDrag = (e) => {
+    if (disabled || isResizing.current) return;
+    e.stopPropagation();
+    e.preventDefault();
+    isDragging.current = true;
+    startPos.current = { x: e.clientX, y: e.clientY };
+    startValues.current = { x, y, scale: scaleVal };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseDownResize = (e) => {
+    if (disabled) return;
+    e.stopPropagation();
+    e.preventDefault();
+    isResizing.current = true;
+    startPos.current = { x: e.clientX, y: e.clientY };
+    startValues.current = { x, y, scale: scaleVal };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging.current) {
+        const deltaX = (e.clientX - startPos.current.x); 
+        const deltaY = (e.clientY - startPos.current.y);
+        onMove(Math.round(startValues.current.x + deltaX), Math.round(startValues.current.y + deltaY));
+    } else if (isResizing.current) {
+        const deltaX = (e.clientX - startPos.current.x); 
+        const newScale = Math.max(20, Math.min(400, startValues.current.scale + (deltaX * 0.5)));
+        onScale(Math.round(newScale));
+    }
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    isResizing.current = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <div 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onMouseDown={handleMouseDownDrag}
+      onDoubleClick={() => onEdit && onEdit(id)}
+      className={`${className} ${disabled ? '' : 'group relative z-10'}`} 
+      style={{ 
+          transform: `translate(${x}px, ${y}px)`, 
+          touchAction: 'none',
+          width: fitContent ? 'max-content' : 'auto', 
+          maxWidth: '100%',
+          display: 'flex',
+          justifyContent: 'center'
+      }}
+      title={onEdit ? "Clique duplo para editar texto" : ""}
+    >
+      <div className={`transition-all duration-200 relative ${isHovered && !disabled ? 'ring-1 ring-white/50 bg-white/10 rounded-lg cursor-pointer' : ''}`}>
+          {children}
+          
+          {isHovered && !disabled && (
+              <>
+                <div 
+                    onMouseDown={handleMouseDownResize}
+                    className="absolute -bottom-2 -right-2 w-5 h-5 bg-white text-black rounded-full shadow-lg flex items-center justify-center cursor-nwse-resize hover:scale-125 transition-transform z-50 border border-gray-400"
+                    title="Arraste para Zoom"
+                >
+                    📏
+                </div>
+                
+                {onEdit && (
+                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center z-50 animate-pulse pointer-events-none">
+                        ✏️
+                    </div>
+                )}
+              </>
+          )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * =================================================================================
+ * COMPONENTE PRINCIPAL
+ * =================================================================================
+ */
+function App() {
+  const [format, setFormat] = React.useState('story');
+  const [theme, setTheme] = React.useState({ ...INITIAL_THEME });
+  const [texts, setTexts] = React.useState({ ...INITIAL_TEXTS });
+  const [scales, setScales] = React.useState({ ...INITIAL_SCALES });
+  const [images, setImages] = React.useState({ logo: null, bg: null });
+  const [bgConfig, setBgConfig] = React.useState({ ...INITIAL_BG });
+  
+  const [savedVerses, setSavedVerses] = React.useState([...INITIAL_VERSES_LIST]);
+  const [newVerseInput, setNewVerseInput] = React.useState("");
+  const [isLoadingVerse, setIsLoadingVerse] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState('texts');
+  const [previewScale, setPreviewScale] = React.useState(1);
+  const [isExporting, setIsExporting] = React.useState(false);
+  const [isAutoSaved, setIsAutoSaved] = React.useState(false);
+  
+  const [editingId, setEditingId] = React.useState(null);
+  const [tempText, setTempText] = React.useState("");
+
+  const artworkRef = React.useRef(null);
+  const containerRef = React.useRef(null);
+
+  // --- INIT & PWA SETUP ---
+  React.useEffect(() => {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+          try {
+              const d = JSON.parse(savedData);
+              if(d.texts) setTexts(d.texts);
+              if(d.scales) setScales(d.scales);
+              if(d.theme) setTheme(d.theme);
+              if(d.format) setFormat(d.format);
+              if(d.savedVerses) setSavedVerses(d.savedVerses);
+              if(d.bgConfig) setBgConfig(d.bgConfig);
+              if(d.images) setImages(d.images);
+          } catch (e) { console.error("Erro load save", e); }
+      }
+  }, []);
+
+  // --- AUTO SAVE ---
+  React.useEffect(() => {
+      const timeout = setTimeout(() => {
+          const data = { format, theme, texts, scales, images, bgConfig, savedVerses, version: APP_VERSION };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          setIsAutoSaved(true);
+          setTimeout(() => setIsAutoSaved(false), 2000);
+      }, 1500);
+      return () => clearTimeout(timeout);
+  }, [format, theme, texts, scales, images, bgConfig, savedVerses]);
+
+  // --- HANDLERS ---
+  const handleTextChange = (key, value) => setTexts(p => ({ ...p, [key]: value }));
+  const handleScaleChange = (key, value) => setScales(p => ({ ...p, [key]: parseInt(value) }));
+  
+  const handleMoveElement = (element, newX, newY) => {
+    if (scales.hasOwnProperty(`${element}X`)) setScales(p => ({ ...p, [`${element}X`]: newX, [`${element}Y`]: newY }));
+    else if (element === 'pill') setScales(p => ({ ...p, pillX: newX, pillY: newY }));
+  };
+
+  const handleResizeElement = (element, newScale) => {
+      if (element === 'pill') setScales(p => ({ ...p, info: newScale }));
+      else setScales(p => ({ ...p, [element]: newScale }));
+  };
+
+  const resetAll = () => {
+    if (!window.confirm("Resetar?")) return;
+    setTexts({ ...INITIAL_TEXTS });
+    setScales({ ...INITIAL_SCALES });
+    setBgConfig({ ...INITIAL_BG });
+    setTheme({ ...INITIAL_THEME });
+    setScales(prev => ({ ...prev, pillY: FORMATS[format].defaultPillY }));
+  };
+
+  // --- VISUAL EDITING ---
+  const startEditing = (id) => {
+      let textKey = id;
+      if (id === 'logo' || id === 'pill') return;
+      
+      if (texts.hasOwnProperty(id)) {
+          setTempText(texts[id]);
+          setEditingId(id);
+      } else if (id === 'footer') {
+           setTempText(texts.footerTitle); 
+           setEditingId('footerTitle');
+      }
+  };
+
+  const saveEditing = () => {
+      if (editingId) {
+          handleTextChange(editingId, tempText);
+          setEditingId(null);
+      }
+  };
+
+  // --- DOWNLOAD ---
+  const downloadArtwork = async () => {
+    if (!artworkRef.current || !window.html2canvas) return;
+    setIsExporting(true);
+    await new Promise(r => setTimeout(r, 200));
+    try {
+        const timestamp = Date.now();
+        const baseFilename = `arte-igreja-${format}-v${APP_VERSION}-${timestamp}`;
+        const jsonLink = document.createElement('a');
+        jsonLink.href = URL.createObjectURL(new Blob([JSON.stringify({ 
+            version: APP_VERSION, format, theme, texts, scales, bg: { ...bgConfig, src: images.bg }, logo: { src: images.logo }, savedVerses 
+        }, null, 2)], {type : 'application/json'}));
+        jsonLink.download = `${baseFilename}.json`;
+        jsonLink.click();
+
+        const element = artworkRef.current;
+        const clone = element.cloneNode(true);
+        const wrapper = document.createElement('div');
+        Object.assign(wrapper.style, { position: 'fixed', left: '-9999px', top: '0', width: `${FORMATS[format].dims.width}px`, height: `${FORMATS[format].dims.height}px`, zIndex: '-9999' });
+        clone.style.transform = 'none';
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
+
+        const canvas = await window.html2canvas(clone, { scale: 3, useCORS: true, allowTaint: true, width: FORMATS[format].dims.width, height: FORMATS[format].dims.height, backgroundColor: theme.bg });
+        const imgLink = document.createElement('a');
+        imgLink.download = `${baseFilename}.jpg`;
+        imgLink.href = canvas.toDataURL('image/jpeg', 1.0);
+        imgLink.click();
+        document.body.removeChild(wrapper);
+    } catch (err) { alert("Erro exportação."); } finally { setIsExporting(false); }
+  };
+
+  React.useEffect(() => {
+    const handleResize = () => {
+       if (!containerRef.current) return;
+       const parent = containerRef.current;
+       const dim = FORMATS[format].dims;
+       let s = Math.min((parent.clientWidth - 40) / dim.width, (parent.clientHeight - 40) / dim.height);
+       setPreviewScale(Math.max(0.1, Math.min(s, 0.95)));
+    };
+    window.addEventListener('resize', handleResize);
+    setTimeout(handleResize, 100);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [format]);
+
+  const fmt = FORMATS[format];
+  const getFontSize = (base, scale) => `${base * (scale / 100)}px`;
+
+  return (
+    <ErrorBoundary>
+        <div style={{ display: 'flex', flexDirection: 'row', width: '100%', height: '100vh', backgroundColor: '#0b0f19', color: '#e5e7eb' }}>
+            {/* SIDEBAR */}
+            <div style={{ width: '100%', maxWidth: '360px', backgroundColor: '#0b0f19', borderRight: '1px solid #1f2937', display: 'flex', flexDirection: 'column', zIndex: 20, overflowY: 'auto' }}>
+                <div style={{ padding: '12px', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0e1422' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: 'linear-gradient(135deg, #fcd34d, #ea580c)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 4px 12px rgba(234, 88, 12, 0.3)' }}>📱</div>
+                        <div><h1 style={{ fontSize: '12px', fontWeight: '700', color: '#d1d5db', letterSpacing: '0.05em' }}>POST DESIGNER</h1><p style={{ fontSize: '9px', color: '#6b7280', fontFamily: 'monospace' }}>v{APP_VERSION} EDIT+</p></div>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '8px', backgroundColor: '#0b0f19' }}>
+                    <button onClick={() => setFormat('story')} style={{ padding: '8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', border: format === 'story' ? 'none' : '1px solid #1f2937', backgroundColor: format === 'story' ? '#1f2937' : 'transparent', color: format === 'story' ? '#fbbf24' : '#6b7280', cursor: 'pointer' }}>📱 Story</button>
+                    <button onClick={() => setFormat('post')} style={{ padding: '8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', border: format === 'post' ? 'none' : '1px solid #1f2937', backgroundColor: format === 'post' ? '#1f2937' : 'transparent', color: format === 'post' ? '#fbbf24' : '#6b7280', cursor: 'pointer' }}>⬜ Post</button>
+                </div>
+
+                <div style={{ display: 'flex', borderBottom: '1px solid #1f2937' }}>
+                    {['texts', 'verses', 'style', 'images', 'layout'].map(tab => (
+                        <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '12px 8px', fontSize: '9px', fontWeight: '500', textTransform: 'uppercase', border: 'none', background: 'none', cursor: 'pointer', color: activeTab === tab ? theme.accent : '#6b7280', borderBottom: activeTab === tab ? `2px solid ${theme.accent}` : 'none' }}>
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                    ))}
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {activeTab === 'texts' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <InputGroup label="Chapéu" value={texts.preTitle} onChange={v => handleTextChange('preTitle', v)} />
+                            <InputGroup label="Título" value={texts.mainTitle} onChange={v => handleTextChange('mainTitle', v)} isArea />
+                            <InputGroup label="Frase" value={texts.subtitle} onChange={v => handleTextChange('subtitle', v)} isArea rows={3} />
+                            <div style={{ paddingTop: '16px', borderTop: '1px solid #1f2937', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase' }}>🕐 Info</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                    <InputGroup label="Dia" value={texts.day} onChange={v => handleTextChange('day', v)} />
+                                    <InputGroup label="Hora" value={texts.time} onChange={v => handleTextChange('time', v)} />
+                                </div>
+                                <InputGroup label="Igreja" value={texts.footerTitle} onChange={v => handleTextChange('footerTitle', v)} />
+                                <InputGroup label="Local L1" value={texts.address1} onChange={v => handleTextChange('address1', v)} />
+                                <InputGroup label="Local L2" value={texts.address2} onChange={v => handleTextChange('address2', v)} />
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'style' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div style={{ backgroundColor: 'rgba(31, 41, 55, 0.5)', padding: '12px', borderRadius: '8px', border: '1px solid #1f2937', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase' }}>🎨 Cores</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div><label style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700', display: 'block', marginBottom: '4px' }}>DESTAQUE</label><input type="color" value={theme.accent} onChange={e => setTheme(p => ({...p, accent: e.target.value}))} style={{ width: '100%', height: '32px', borderRadius: '6px', cursor: 'pointer', border: 'none' }} /></div>
+                                    <div><label style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700', display: 'block', marginBottom: '4px' }}>FUNDO</label><input type="color" value={theme.bg} onChange={e => setTheme(p => ({...p, bg: e.target.value}))} style={{ width: '100%', height: '32px', borderRadius: '6px', cursor: 'pointer', border: 'none' }} /></div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <RangeControl label="Chapéu" value={scales.preTitle} onChange={v => handleScaleChange('preTitle', v)} color={theme.accent} />
+                                <RangeControl label="Título" value={scales.mainTitle} onChange={v => handleScaleChange('mainTitle', v)} color={theme.accent} />
+                                <RangeControl label="Frase (Zoom)" value={scales.subtitle} onChange={v => handleScaleChange('subtitle', v)} color={theme.accent} />
+                                <RangeControl label="Frase (Largura)" value={scales.subtitleWidth} onChange={v => handleScaleChange('subtitleWidth', v)} min={30} max={100} unit="%" color={theme.accent} />
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'images' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div><label style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700', display: 'block', marginBottom: '8px' }}>LOGO</label><input type="file" onChange={(e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => setImages(prev => ({ ...prev, logo: ev.target.result })); reader.readAsDataURL(file); }}} style={{ fontSize: '10px', width: '100%' }} /></div>
+                            <div><label style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700', display: 'block', marginBottom: '8px' }}>FUNDO</label><input type="file" onChange={(e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => setImages(prev => ({ ...prev, bg: ev.target.result })); reader.readAsDataURL(file); }}} style={{ fontSize: '10px', width: '100%' }} /></div>
+                            <RangeControl label="Opacidade" value={bgConfig.opacity} onChange={v => setBgConfig(p => ({...p, opacity: v}))} min={0} max={100} color={theme.accent} />
+                            <RangeControl label="Zoom BG" value={bgConfig.scale} onChange={v => setBgConfig(p => ({...p, scale: v}))} min={100} max={300} color={theme.accent} />
+                        </div>
+                    )}
+
+                    {activeTab === 'layout' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase' }}>↔️ Posição</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                <RangeControl label="Logo X" value={scales.logoX} onChange={v => handleScaleChange('logoX', v)} min={-300} max={300} displayValue={false} />
+                                <RangeControl label="Logo Y" value={scales.logoY} onChange={v => handleScaleChange('logoY', v)} min={-300} max={300} displayValue={false} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ padding: '16px', borderTop: '1px solid #1f2937', backgroundColor: '#0e1422' }}>
+                    <button onClick={downloadArtwork} disabled={isExporting} style={{ width: '100%', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '12px', border: '1px solid rgba(34, 197, 94, 0.3)', background: 'linear-gradient(to right, #16a34a, #22c55e)', color: 'white', cursor: isExporting ? 'not-allowed' : 'pointer', opacity: isExporting ? 0.6 : 1 }}>
+                        {isExporting ? '⏳' : '⬇️'} BAIXAR ARTE
+                    </button>
+                </div>
+            </div>
+
+            {/* CANVAS AREA */}
+            <div ref={containerRef} style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px', overflow: 'hidden', position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: 0, opacity: 0.2, pointerEvents: 'none', backgroundImage: 'radial-gradient(#6b7280 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                
+                <div style={{ width: fmt.dims.width * previewScale, height: fmt.dims.height * previewScale, position: 'relative', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', border: '1px solid #1f2937', transition: 'all 0.2s' }}>
+                    <div style={{ width: fmt.dims.width, height: fmt.dims.height, transform: `scale(${previewScale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }}>
+                        <div ref={artworkRef} style={{ width: '100%', height: '100%', backgroundColor: theme.bg, color: theme.text, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', userSelect: 'none' }}>
+                            {/* Background */}
+                            {images.bg && (
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0, transform: `translate(calc(-50% + ${bgConfig.x}%), calc(-50% + ${bgConfig.y}%)) scale(${bgConfig.scale / 100})`, opacity: bgConfig.opacity / 100 }}>
+                                    <div style={{ width: '100%', height: '100%', backgroundImage: `url(${images.bg})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                                </div>
+                            )}
+
+                            {/* Blurs */}
+                            <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', mixBlendMode: 'screen' }}>
+                                <div style={{ position: 'absolute', top: '-10%', right: '-20%', width: '120%', height: '80%', borderRadius: '50%', opacity: 0.6, background: `radial-gradient(circle, ${theme.accent}40 0%, transparent 70%)` }}></div>
+                                <div style={{ position: 'absolute', bottom: '-10%', left: '-20%', width: '100%', height: '70%', borderRadius: '50%', opacity: 0.4, background: `radial-gradient(circle, ${theme.bg}80 0%, transparent 70%)` }}></div>
+                            </div>
+
+                            {/* Content */}
+                            <div style={{ position: 'relative', zIndex: 20, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '32px 40px' }}>
+                                <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                                    <DraggableItem id="logo" x={scales.logoX} y={scales.logoY} scaleVal={scales.logo} onMove={(x, y) => handleMoveElement('logo', x, y)} onScale={(s) => handleResizeElement('logo', s)} disabled={isExporting}>
+                                        <div style={{ width: fmt.logoBaseWidth * (scales.logo / 100), position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', filter: 'drop-shadow(0 25px 50px rgba(0, 0, 0, 0.25))' }}>
+                                            {images.logo ? <img src={images.logo} style={{ width: '100%', height: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.15))' }} alt="Logo" /> : <span style={{ fontSize: '9rem', color: theme.accent, fontFamily: 'Playfair Display', fontStyle: 'italic' }}>LOGO</span>}
+                                        </div>
+                                    </DraggableItem>
+                                </div>
+
+                                <div style={{ flexGrow: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: '20px' }}>
+                                    <h3 style={{ color: theme.accent, fontSize: '34px', fontWeight: 'bold', letterSpacing: '0.25em', textTransform: 'uppercase', fontFamily: 'Montserrat' }}>
+                                        {texts.preTitle}
+                                    </h3>
+                                    <h1 style={{ fontSize: '135px', fontWeight: 'black', letterSpacing: '-0.05em', lineHeight: '0.85', textTransform: 'uppercase', color: 'white', fontFamily: 'Montserrat', whiteSpace: 'pre-line' }}>
+                                        {texts.mainTitle}
+                                    </h1>
+                                    {texts.subtitle && (
+                                        <p style={{ color: '#f3f4f6', fontSize: '48px', fontFamily: 'Playfair Display', fontStyle: 'italic', lineHeight: 1.4, opacity: 0.9, filter: 'drop-shadow(0 3px 0 rgba(0, 0, 0, 0.2))', whiteSpace: 'pre-wrap', width: `${scales.subtitleWidth}%`, margin: '0 auto' }}>
+                                            {texts.subtitle}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', position: 'relative' }}>
+                                    <div style={{ borderRadius: '9999px', border: '1px solid rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(16px)', overflow: 'hidden', display: 'flex', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.15)', padding: `${scales.pillPadding}px 32px`, transform: `scale(${scales.info / 100})`, marginBottom: '32px' }}>
+                                        <div style={{ borderRadius: '9999px', width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', marginRight: '24px', backgroundColor: theme.accent, color: theme.bg, position: 'absolute', left: '16px' }}>🕐</div>
+                                        <div style={{ display: 'flex', gap: '0', paddingLeft: '64px' }}>
+                                            <div style={{ paddingRight: '24px', paddingLeft: '24px', textAlign: 'left', minWidth: '160px', borderRight: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                                                <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '4px', textTransform: 'uppercase' }}>QUANDO</p>
+                                                <p style={{ fontWeight: 'bold', color: 'white', fontSize: '32px', lineHeight: 1, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>{texts.day}</p>
+                                            </div>
+                                            <div style={{ paddingRight: '24px', paddingLeft: '24px', textAlign: 'left', minWidth: '120px' }}>
+                                                <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '4px', textTransform: 'uppercase' }}>HORÁRIO</p>
+                                                <p style={{ fontWeight: 'bold', color: 'white', fontSize: '32px', lineHeight: 1, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>{texts.time}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ textAlign: 'center', opacity: 0.9, marginBottom: '16px', transform: `scale(${scales.footer / 100})`, transformOrigin: 'bottom' }}>
+                                        <p style={{ color: theme.accent, fontSize: fmt.baseSizes.footerTitle + 'px', fontWeight: 'bold', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '4px' }}>{texts.footerTitle}</p>
+                                        <div style={{ color: '#d1d5db', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <p style={{ fontSize: fmt.baseSizes.footerAddr + 'px', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>📍 {texts.address1}</p>
+                                            <p style={{ fontSize: fmt.baseSizes.footerAddr * 0.9 + 'px', fontWeight: '500', opacity: 0.8 }}>{texts.address2}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {editingId && (
+                    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+                        <div style={{ backgroundColor: '#1f2937', border: '1px solid #4b5563', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '512px', boxShadow: '0 25px 50px rgba(0, 0, 0, 0.5)' }}>
+                            <h3 style={{ color: 'white', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>✏️ EDITAR TEXTO</h3>
+                            <textarea 
+                                value={tempText}
+                                onChange={(e) => setTempText(e.target.value)}
+                                style={{ width: '100%', backgroundColor: 'rgba(0, 0, 0, 0.3)', border: '1px solid #4b5563', borderRadius: '8px', padding: '16px', color: 'white', fontSize: '18px', fontFamily: 'Montserrat', resize: 'none', marginBottom: '16px', outline: 'none', minHeight: '120px' }}
+                                autoFocus
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                                <button onClick={() => setEditingId(null)} style={{ padding: '8px 16px', borderRadius: '8px', color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '700' }}>CANCELAR</button>
+                                <button onClick={saveEditing} style={{ padding: '8px 24px', borderRadius: '8px', backgroundColor: theme.accent, color: 'black', fontWeight: '700', border: 'none', cursor: 'pointer' }}>✓ SALVAR</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    </ErrorBoundary>
+  );
+}
+
+// Helper Components
+const InputGroup = ({ label, value, onChange, isArea, rows, placeholder }) => {
+    const className = "w-full bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:border-gray-500 outline-none resize-none";
+    return (
+        <div>
+            <label style={{ fontSize: '9px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginLeft: '4px', marginBottom: '4px', display: 'block' }}>{label}</label>
+            {isArea ? (
+                <textarea rows={rows || 2} value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '500', color: 'white', fontFamily: 'Montserrat', outline: 'none', resize: 'none' }} placeholder={placeholder} />
+            ) : (
+                <input type="text" value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '500', color: 'white', fontFamily: 'Montserrat', outline: 'none' }} placeholder={placeholder} />
+            )}
+        </div>
+    );
+};
+
+const RangeControl = ({ label, value, onChange, min = 50, max = 200, unit = '%', displayValue = true, color }) => {
+    return (
+        <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginBottom: '4px' }}>
+                <span>{label}</span>
+                {displayValue && <span style={{ color: color }}>{value}{unit}</span>}
+            </div>
+            <input type="range" min={min} max={max} value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', cursor: 'pointer', height: '2px', backgroundColor: '#374151', borderRadius: '1px', outline: 'none', appearance: 'none', WebkitAppearance: 'none' }} />
+        </div>
+    );
+};
+
+// Render App
+ReactDOM.render(<App />, document.getElementById('root'));
+
+// PWA Service Worker (opcional)
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        // Descomente para ativar SW
+        // navigator.serviceWorker.register('/sw.js');
+    });
+}
+    </script>
 </body>
 </html>
